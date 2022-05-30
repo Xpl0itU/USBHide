@@ -1,7 +1,6 @@
 #include <cstdarg>
 #include <cstdio>
-#include <stdint.h>
-#include <stdbool.h>
+#include <cstdint>
 #include <malloc.h>
 
 #include <coreinit/screen.h>
@@ -16,9 +15,6 @@ size_t tvBufferSize;
 size_t drcBufferSize;
 void* tvBuffer;
 void* drcBuffer;
-
-int fsaFd;
-int res;
 
 void printToScreen(int x, int y, const char *str, ...) {
     char *tmp = nullptr;
@@ -95,7 +91,7 @@ int main() {
         return 1;
     }
 
-    fsaFd = IOSUHAX_FSA_Open();
+    int fsaFd = IOSUHAX_FSA_Open();
     if (fsaFd < 0) {
         printToScreen(0, 0, "IOSUHAX_FSA_Open failed.");
         flipBuffers();
