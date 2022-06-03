@@ -105,6 +105,8 @@ int main() {
 
     VPADStatus status;
     VPADReadError error;
+    
+    bool invalidMBR = false;
 
     while(WHBProcIsRunning()) {
         VPADRead(VPAD_CHAN_0, &status, 1, &error);
@@ -117,12 +119,14 @@ int main() {
         } else if(mbr[511] == 0xAB) {
             printToScreen(0, 1, "Current state: hidden");
             printToScreen(0, 2, "Press A to show the USB");
-        } else
+        } else {
+            invalidMBR = true;
             printToScreen(0, 1, "Unknown MBR value");
+        }
 
         flipBuffers();
 
-        if (status.trigger & VPAD_BUTTON_A)
+        if ((status.trigger & VPAD_BUTTON_A) && !invalidMBR)
             hideOrUnhideUSB(mbr);
     }
 
