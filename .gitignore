@@ -1,0 +1,6 @@
+*.elf
+*.rpx
+*.d
+*.o
+*.lst
+*.map
