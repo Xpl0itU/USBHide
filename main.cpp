@@ -21,6 +21,7 @@ void* tvBuffer;
 void* drcBuffer;
 
 extern FSClient *__wut_devoptab_fs_client;
+
 int32_t usb01Handle;
 int32_t usb02Handle;
 
@@ -101,9 +102,9 @@ int main() {
 
     if(Mocha_InitLibrary() != MOCHA_RESULT_SUCCESS) {
         printToScreen(0, 0, "Mocha_InitLibrary failed");
+        flipBuffers();
         if (tvBuffer) free(tvBuffer);
         if (drcBuffer) free(drcBuffer);
-        flipBuffers();
         OSScreenShutdown();
         WHBProcShutdown();
         Mocha_DeInitLibrary();
@@ -111,10 +112,21 @@ int main() {
         return 1;
     }
 
-    Mocha_UnlockFSClient(__wut_devoptab_fs_client);
+    if(Mocha_UnlockFSClient(__wut_devoptab_fs_client) != MOCHA_RESULT_SUCCESS) {
+        printToScreen(0, 0, "Mocha_UnlockFSClient failed, please update your MochaPayload");
+        flipBuffers();
+        if (tvBuffer) free(tvBuffer);
+        if (drcBuffer) free(drcBuffer);
+        OSScreenShutdown();
+        WHBProcShutdown();
+        Mocha_DeInitLibrary();
+        IOSUHAX_Close();
+        return 1;
+    }
 
     uint8_t *usb01mbr = (uint8_t*)aligned_alloc(0x40, 512);
     uint8_t *usb02mbr = (uint8_t*)aligned_alloc(0x40, 512);
+
     FSAEx_RawOpen(__wut_devoptab_fs_client, (char*)"/dev/usb01", &usb01Handle);
     FSAEx_RawRead(__wut_devoptab_fs_client, usb01mbr, 512, 1, 0, usb01Handle);
 
