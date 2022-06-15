@@ -6,6 +6,7 @@
 
 #include <coreinit/screen.h>
 #include <coreinit/cache.h>
+#include <padscore/kpad.h>
 #include <vpad/input.h>
 #include <whb/proc.h>
 
@@ -68,6 +69,11 @@ int main() {
     WHBProcInit();
 
     OSScreenInit();
+
+    VPADInit();
+    WPADInit();
+    KPADInit();
+    WPADEnableURCC(1);
 
     tvBufferSize = OSScreenGetBufferSizeEx(SCREEN_TV);
     drcBufferSize = OSScreenGetBufferSizeEx(SCREEN_DRC);
@@ -140,6 +146,15 @@ int main() {
 
     while(WHBProcIsRunning()) {
         VPADRead(VPAD_CHAN_0, &status, 1, &error);
+        memset(&kpad_status, 0, sizeof(KPADStatus));
+        WPADExtensionType controllerType;
+        for (int i = 0; i < 4; i++) {
+            if (WPADProbe((WPADChan) i, &controllerType) == 0) {
+                KPADRead((WPADChan) i, &kpad_status, 1);
+                break;
+            }
+        }
+
         clearBuffers();
 
         printToScreen(0, cursorPos, ">");
@@ -161,15 +176,23 @@ int main() {
         printToScreen(1, 3, "Press A to toggle USB %s", cursorPos == 0 ? "01" : "02");
 
         flipBuffers();
-        if (status.trigger & VPAD_BUTTON_DOWN)
+        if ((status.trigger & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN)) |
+            (kpad_status.trigger & (WPAD_BUTTON_DOWN)) |
+            (kpad_status.classic.trigger & (WPAD_CLASSIC_BUTTON_DOWN | WPAD_CLASSIC_STICK_L_EMULATION_DOWN)) |
+            (kpad_status.pro.trigger & (WPAD_PRO_BUTTON_DOWN | WPAD_PRO_STICK_L_EMULATION_DOWN)))
             cursorPos++;
-        if (status.trigger & VPAD_BUTTON_UP)
+        if ((status.trigger & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP)) |
+            (kpad_status.trigger & (WPAD_BUTTON_UP)) |
+            (kpad_status.classic.trigger & (WPAD_CLASSIC_BUTTON_UP | WPAD_CLASSIC_STICK_L_EMULATION_UP)) |
+            (kpad_status.pro.trigger & (WPAD_PRO_BUTTON_UP | WPAD_PRO_STICK_L_EMULATION_UP)))
             cursorPos--;
         if (cursorPos < 0)
             cursorPos = 0;
         if (cursorPos > 1)
             cursorPos = 1;
-        if (status.trigger & VPAD_BUTTON_A) {
+        if ((status.trigger & VPAD_BUTTON_A) |
+            ((kpad_status.trigger & (WPAD_BUTTON_A)) | (kpad_status.classic.trigger & (WPAD_CLASSIC_BUTTON_A)) |
+            (kpad_status.pro.trigger & (WPAD_PRO_BUTTON_A)))) {
             switch (cursorPos) {
             case 0:
                 hideOrUnhideUSB(usb01mbr, usb01Handle);
