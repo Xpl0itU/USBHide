@@ -14,16 +14,12 @@
 #include <iosuhax.h>
 #include <iosuhax_disc_interface.h>
 
-#include <mocha/mocha.h>
-#include <mocha/fsa.h>
-
 size_t tvBufferSize;
 size_t drcBufferSize;
 void* tvBuffer;
 void* drcBuffer;
 
-extern FSClient *__wut_devoptab_fs_client;
-
+int fsaFd;
 int32_t usb01Handle;
 int32_t usb02Handle;
 
@@ -58,10 +54,10 @@ void clearBuffers() {
 void hideOrUnhideUSB(uint8_t *mbr, int32_t handle) {
     if(mbr[511] == 0xAA) {
         mbr[511]++;
-        FSAEx_RawWrite(__wut_devoptab_fs_client, mbr, 512, 1, 0, handle);
+        IOSUHAX_FSA_RawWrite(fsaFd, mbr, 512, 1, 0, handle);
     } else if(mbr[511] == 0xAB) {
         mbr[511]--;
-        FSAEx_RawWrite(__wut_devoptab_fs_client, mbr, 512, 1, 0, handle);
+        IOSUHAX_FSA_RawWrite(fsaFd, mbr, 512, 1, 0, handle);
     } else
         return;
 }
@@ -107,38 +103,22 @@ int main() {
         return 1;
     }
 
-    if(Mocha_InitLibrary() != MOCHA_RESULT_SUCCESS) {
-        printToScreen(0, 0, "Mocha_InitLibrary failed");
+    fsaFd = IOSUHAX_FSA_Open();
+    if (fsaFd < 0) {
+        printToScreen(0, 0, "IOSUHAX_FSA_Open failed");
         flipBuffers();
-        if (tvBuffer) free(tvBuffer);
-        if (drcBuffer) free(drcBuffer);
-        OSScreenShutdown();
         WHBProcShutdown();
-        Mocha_DeInitLibrary();
-        IOSUHAX_Close();
-        return 1;
-    }
-
-    if(Mocha_UnlockFSClient(__wut_devoptab_fs_client) != MOCHA_RESULT_SUCCESS) {
-        printToScreen(0, 0, "Mocha_UnlockFSClient failed, please update your MochaPayload");
-        flipBuffers();
-        if (tvBuffer) free(tvBuffer);
-        if (drcBuffer) free(drcBuffer);
-        OSScreenShutdown();
-        WHBProcShutdown();
-        Mocha_DeInitLibrary();
-        IOSUHAX_Close();
         return 1;
     }
 
     uint8_t *usb01mbr = (uint8_t*)aligned_alloc(0x40, 512);
     uint8_t *usb02mbr = (uint8_t*)aligned_alloc(0x40, 512);
 
-    FSAEx_RawOpen(__wut_devoptab_fs_client, (char*)"/dev/usb01", &usb01Handle);
-    FSAEx_RawRead(__wut_devoptab_fs_client, usb01mbr, 512, 1, 0, usb01Handle);
+    IOSUHAX_FSA_RawOpen(fsaFd, (char*)"/dev/usb01", &usb01Handle);
+    IOSUHAX_FSA_RawRead(fsaFd, usb01mbr, 512, 1, 0, usb01Handle);
 
-    FSAEx_RawOpen(__wut_devoptab_fs_client, (char*)"/dev/usb02", &usb02Handle);
-    FSAEx_RawRead(__wut_devoptab_fs_client, usb02mbr, 512, 1, 0, usb02Handle);
+    IOSUHAX_FSA_RawOpen(fsaFd, (char*)"/dev/usb02", &usb02Handle);
+    IOSUHAX_FSA_RawRead(fsaFd, usb02mbr, 512, 1, 0, usb02Handle);
 
     VPADStatus status;
     VPADReadError error;
@@ -213,8 +193,9 @@ int main() {
 
     OSScreenShutdown();
     WHBProcShutdown();
-    FSAEx_RawClose(__wut_devoptab_fs_client, usb01Handle);
-    Mocha_DeInitLibrary();
+    IOSUHAX_FSA_RawClose(fsaFd, usb01Handle);
+    IOSUHAX_FSA_RawClose(fsaFd, usb02Handle);
     IOSUHAX_Close();
+    IOSUHAX_FSA_Close(fsaFd);
     return 0;
 }

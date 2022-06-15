@@ -4,3 +4,4 @@
 *.o
 *.lst
 *.map
+.vscode
