@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <malloc.h>
 
 #include <coreinit/screen.h>
