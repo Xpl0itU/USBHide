@@ -141,6 +141,7 @@ int main() {
 
     VPADStatus status;
     VPADReadError error;
+    KPADStatus kpad_status;
 
     int cursorPos = 0;
 
