@@ -13,7 +13,6 @@
 #include <coreinit/cache.h>
 #include <padscore/kpad.h>
 #include <sysapp/launch.h>
-#include <sysapp/title.h>
 #include <vpad/input.h>
 #include <whb/proc.h>
 
