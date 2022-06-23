@@ -5,9 +5,15 @@
 #include <cstring>
 #include <malloc.h>
 
+#include <coreinit/ios.h>
+#include <coreinit/mcp.h>
+#include <coreinit/thread.h>
+#include <coreinit/time.h>
 #include <coreinit/screen.h>
 #include <coreinit/cache.h>
 #include <padscore/kpad.h>
+#include <sysapp/launch.h>
+#include <sysapp/title.h>
 #include <vpad/input.h>
 #include <whb/proc.h>
 
@@ -22,6 +28,36 @@ void* drcBuffer;
 int fsaFd;
 int32_t usb01Handle;
 int32_t usb02Handle;
+
+//just to be able to call async
+void someFunc(IOSError err, void *arg){(void)arg;}
+
+int mcp_hook_fd = -1;
+int MCPHookOpen()
+{
+	//take over mcp thread
+	mcp_hook_fd = MCP_Open();
+	if(mcp_hook_fd < 0)
+		return -1;
+	IOS_IoctlAsync(mcp_hook_fd, 0x62, (void*)0, 0, (void*)0, 0, someFunc, (void*)0);
+	//let wupserver start up
+	OSSleepTicks(OSMillisecondsToTicks(500));
+	if(IOSUHAX_Open("/dev/mcp") < 0)
+		return -1;
+	return 0;
+}
+
+void MCPHookClose()
+{
+	if(mcp_hook_fd < 0)
+		return;
+	//close down wupserver, return control to mcp
+	IOSUHAX_Close();
+	//wait for mcp to return
+	OSSleepTicks(OSMillisecondsToTicks(500));
+	MCP_Close(mcp_hook_fd);
+	mcp_hook_fd = -1;
+}
 
 void printToScreen(int x, int y, const char *str, ...) {
     char *tmp = nullptr;
@@ -86,7 +122,7 @@ int main() {
         OSScreenShutdown();
         WHBProcShutdown();
 
-        return 1;
+        return 0;
     }
 
     OSScreenSetBufferEx(SCREEN_TV, tvBuffer);
@@ -96,11 +132,14 @@ int main() {
     OSScreenEnableEx(SCREEN_DRC, true);
 
     int res = IOSUHAX_Open(NULL);
-    if (res < 0) {
-        printToScreen(0, 0, "IOSUHAX_Open failed");
-        flipBuffers();
-        WHBProcShutdown();
-        return 1;
+    if (res < 0) { // Not Tiramisu/Mocha
+        res = MCPHookOpen();
+        if (res < 0) {
+            printToScreen(0, 0, "IOSUHAX_Open failed");
+            flipBuffers();
+            WHBProcShutdown();
+            return 0;
+        }
     }
 
     fsaFd = IOSUHAX_FSA_Open();
@@ -108,7 +147,7 @@ int main() {
         printToScreen(0, 0, "IOSUHAX_FSA_Open failed");
         flipBuffers();
         WHBProcShutdown();
-        return 1;
+        return 0;
     }
 
     uint8_t *usb01mbr = (uint8_t*)aligned_alloc(0x40, 512);
@@ -188,14 +227,18 @@ int main() {
         }
     }
 
-    if (tvBuffer) free(tvBuffer);
-    if (drcBuffer) free(drcBuffer);
-
-    OSScreenShutdown();
-    WHBProcShutdown();
     IOSUHAX_FSA_RawClose(fsaFd, usb01Handle);
     IOSUHAX_FSA_RawClose(fsaFd, usb02Handle);
-    IOSUHAX_Close();
     IOSUHAX_FSA_Close(fsaFd);
+    if(mcp_hook_fd >= 0) {
+        MCPHookClose();
+        SYSRelaunchTitle(0, NULL);
+    } else {
+		IOSUHAX_Close();
+    }
+    if (tvBuffer) free(tvBuffer);
+    if (drcBuffer) free(drcBuffer);
+    OSScreenShutdown();
+    WHBProcShutdown();
     return 0;
 }
