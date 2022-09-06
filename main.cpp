@@ -235,9 +235,9 @@ int main() {
     } else {
 		IOSUHAX_Close();
     }
+    OSScreenShutdown();
     if (tvBuffer) free(tvBuffer);
     if (drcBuffer) free(drcBuffer);
-    OSScreenShutdown();
     WHBProcShutdown();
     return 0;
 }
