@@ -19,6 +19,8 @@
 #include <iosuhax.h>
 #include <iosuhax_disc_interface.h>
 
+#include "StateUtils.h"
+
 size_t tvBufferSize;
 size_t drcBufferSize;
 void* tvBuffer;
@@ -32,8 +34,7 @@ int32_t usb02Handle;
 void someFunc(IOSError err, void *arg){(void)arg;}
 
 int mcp_hook_fd = -1;
-int MCPHookOpen()
-{
+int MCPHookOpen() {
 	//take over mcp thread
 	mcp_hook_fd = MCP_Open();
 	if(mcp_hook_fd < 0)
@@ -46,8 +47,7 @@ int MCPHookOpen()
 	return 0;
 }
 
-void MCPHookClose()
-{
+void MCPHookClose() {
 	if(mcp_hook_fd < 0)
 		return;
 	//close down wupserver, return control to mcp
@@ -98,7 +98,7 @@ void hideOrUnhideUSB(uint8_t *mbr, int32_t handle) {
 }
 
 int main() {
-    WHBProcInit();
+    State::init();
 
     OSScreenInit();
 
@@ -118,8 +118,7 @@ int main() {
         if (tvBuffer) free(tvBuffer);
         if (drcBuffer) free(drcBuffer);
 
-        OSScreenShutdown();
-        WHBProcShutdown();
+        State::shutdown();
 
         return 0;
     }
@@ -136,7 +135,7 @@ int main() {
         if (res < 0) {
             printToScreen(0, 0, "IOSUHAX_Open failed");
             flipBuffers();
-            WHBProcShutdown();
+            State::shutdown();
             return 0;
         }
     }
@@ -145,7 +144,7 @@ int main() {
     if (fsaFd < 0) {
         printToScreen(0, 0, "IOSUHAX_FSA_Open failed");
         flipBuffers();
-        WHBProcShutdown();
+        State::shutdown();
         return 0;
     }
 
@@ -164,7 +163,7 @@ int main() {
 
     int cursorPos = 0;
 
-    while(WHBProcIsRunning()) {
+    while(State::AppRunning()) {
         VPADRead(VPAD_CHAN_0, &status, 1, &error);
         memset(&kpad_status, 0, sizeof(KPADStatus));
         WPADExtensionType controllerType;
@@ -235,8 +234,6 @@ int main() {
     } else {
 		IOSUHAX_Close();
     }
-    if (tvBuffer) free(tvBuffer);
-    if (drcBuffer) free(drcBuffer);
-    WHBProcShutdown();
+    State::shutdown();
     return 0;
 }

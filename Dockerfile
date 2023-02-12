@@ -1,4 +1,4 @@
-FROM devkitpro/devkitppc:latest
+FROM wiiuenv/devkitppc:20220917
 
 RUN git clone https://github.com/devkitPro/wut && \
  cd wut && \
@@ -14,4 +14,4 @@ RUN git clone https://github.com/devkitPro/wut && \
  cd .. && \
  rm -rf libiosuhax
 
-WORKDIR project
+WORKDIR /project
